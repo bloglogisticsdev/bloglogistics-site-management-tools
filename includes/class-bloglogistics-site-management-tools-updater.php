@@ -11,9 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
-if ( ! class_exists( 'BlogLogistics_Site_Management_Tools_GitHub_Updater', false ) ) {
+if ( ! class_exists( 'BlogLogistics_Site_Management_Tools_Updater', false ) ) {
 
-    final class BlogLogistics_Site_Management_Tools_GitHub_Updater {
+    final class BlogLogistics_Site_Management_Tools_Updater {
 
         /**
          * Initialise GitHub-based plugin updates.
@@ -39,7 +39,6 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools_GitHub_Updater', false
                 $args['slug']
             );
 
-            $update_checker->getVcsApi()->enableReleaseAssets( '/\\.zip($|[?&#])/i' );
         }
     }
 }
