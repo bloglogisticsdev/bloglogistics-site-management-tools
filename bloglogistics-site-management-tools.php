@@ -3,7 +3,7 @@
  * Plugin Name:       BlogLogistics Site Management Tools
  * Plugin URI:        https://github.com/bloglogisticsdev/bloglogistics-site-management-tools
  * Description:       Protects BlogLogistics managed-site access, including the BlogLogistics admin account and MainWP Child connector.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 7.0
  * Requires PHP:      8.3
  * Author:            BlogLogistics
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'BLOGLOGISTICS_SMT_VERSION', '1.0.0' );
+define( 'BLOGLOGISTICS_SMT_VERSION', '1.0.1' );
 define( 'BLOGLOGISTICS_SMT_SLUG', 'bloglogistics-site-management-tools' );
 define( 'BLOGLOGISTICS_SMT_FILE', __FILE__ );
 define( 'BLOGLOGISTICS_SMT_DIR', plugin_dir_path( __FILE__ ) );
@@ -27,7 +27,10 @@ define( 'BLOGLOGISTICS_SMT_REPO_URL', 'https://github.com/bloglogisticsdev/blogl
 $bloglogistics_smt_puc = BLOGLOGISTICS_SMT_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
 
 if ( file_exists( $bloglogistics_smt_puc ) ) {
-    require_once $bloglogistics_smt_puc;
+    if ( ! class_exists( \YahnisElsts\PluginUpdateChecker\v5\PucFactory::class, false ) ) {
+        require_once $bloglogistics_smt_puc;
+    }
+
     require_once BLOGLOGISTICS_SMT_DIR . 'includes/class-bloglogistics-site-management-tools-github-updater.php';
 
     BlogLogistics_Site_Management_Tools_GitHub_Updater::init( [

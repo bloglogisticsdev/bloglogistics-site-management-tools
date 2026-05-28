@@ -4,7 +4,7 @@ Tags: site management, managed sites, mainwp, admin tools, access protection
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.3
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -65,6 +65,10 @@ MainWP Child is part of the BlogLogistics managed-site connection. Accidentally 
 The BlogLogistics management account can still see and manage protected tools.
 
 == Changelog ==
+
+= 1.0.1 =
+* Prevent Plugin Update Checker from loading more than once when multiple BlogLogistics plugins are active.
+* Keep updater wrapper class plugin-specific to avoid conflicts with other BlogLogistics plugins.
 
 = 1.0.0 =
 * Rename plugin to BlogLogistics Site Management Tools.
