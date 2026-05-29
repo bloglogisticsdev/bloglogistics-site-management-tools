@@ -3,7 +3,7 @@
  * Plugin Name:       BlogLogistics Site Management Tools
  * Plugin URI:        https://github.com/bloglogisticsdev/bloglogistics-site-management-tools
  * Description:       Protects BlogLogistics managed-site access, including the BlogLogistics admin account and MainWP Child connector.
- * Version:           1.0.3
+ * Version:           1.0.4
  * Requires at least: 7.0
  * Requires PHP:      8.3
  * Author:            BlogLogistics
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'BLOGLOGISTICS_SMT_VERSION', '1.0.3' );
+define( 'BLOGLOGISTICS_SMT_VERSION', '1.0.4' );
 define( 'BLOGLOGISTICS_SMT_SLUG', 'bloglogistics-site-management-tools' );
 define( 'BLOGLOGISTICS_SMT_FILE', __FILE__ );
 define( 'BLOGLOGISTICS_SMT_DIR', plugin_dir_path( __FILE__ ) );
