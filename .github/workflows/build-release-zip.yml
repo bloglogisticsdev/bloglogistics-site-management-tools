@@ -55,32 +55,88 @@ jobs:
       - name: Build update manifest
         if: github.event_name == 'release'
         run: |
-          PLUGIN_NAME="BlogLogistics Site Management Tools"
-          PLUGIN_SLUG="bloglogistics-site-management-tools"
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"
-          DOWNLOAD_URL="https://github.com/bloglogisticsdev/bloglogistics-site-management-tools/releases/download/v${VERSION}/${PLUGIN_SLUG}.zip"
-          HOMEPAGE="https://github.com/bloglogisticsdev/bloglogistics-site-management-tools"
-          LAST_UPDATED="$(date -u +%Y-%m-%d)"
+          python3 <<'PY'
+          import datetime
+          import html
+          import json
+          import re
+          from pathlib import Path
 
-          cat > "${PLUGIN_SLUG}.json" <<EOF
-          {
-            "name": "${PLUGIN_NAME}",
-            "version": "${VERSION}",
-            "download_url": "${DOWNLOAD_URL}",
-            "homepage": "${HOMEPAGE}",
-            "requires": "7.0",
-            "tested": "7.0",
-            "requires_php": "8.3",
-            "last_updated": "${LAST_UPDATED}",
-            "sections": {
-              "description": "Protects BlogLogistics managed-site access and site management tools.",
-              "changelog": "<h4>${VERSION}</h4><ul><li>See the GitHub release notes for this version.</li></ul>"
-            }
+          plugin_name = "BlogLogistics Site Management Tools"
+          plugin_slug = "bloglogistics-site-management-tools"
+          repo_url = "https://github.com/bloglogisticsdev/bloglogistics-site-management-tools"
+          tag_name = "${{ github.event.release.tag_name }}"
+          version = tag_name.lstrip("v")
+          download_url = f"{repo_url}/releases/download/v{version}/{plugin_slug}.zip"
+          last_updated = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+
+          readme_path = Path("readme.txt")
+          readme = readme_path.read_text(encoding="utf-8", errors="replace")
+
+          changelog_match = re.search(
+              r"^==\s*Changelog\s*==\s*(.*?)(?=^==\s+|\Z)",
+              readme,
+              flags=re.IGNORECASE | re.MULTILINE | re.DOTALL,
+          )
+
+          changelog_text = changelog_match.group(1).strip() if changelog_match else ""
+
+          html_parts = []
+          current_items = []
+
+          def flush_items():
+              global current_items
+              if current_items:
+                  html_parts.append("<ul>")
+                  for item in current_items:
+                      html_parts.append(f"<li>{html.escape(item)}</li>")
+                  html_parts.append("</ul>")
+                  current_items = []
+
+          for raw_line in changelog_text.splitlines():
+              line = raw_line.strip()
+              if not line:
+                  continue
+
+              version_heading = re.match(r"^=\s*(.*?)\s*=$", line)
+              if version_heading:
+                  flush_items()
+                  html_parts.append(f"<h4>{html.escape(version_heading.group(1))}</h4>")
+                  continue
+
+              if line.startswith("*"):
+                  current_items.append(line.lstrip("*").strip())
+                  continue
+
+              current_items.append(line)
+
+          flush_items()
+
+          changelog_html = "".join(html_parts) if html_parts else "<p>No changelog available.</p>"
+
+          manifest = {
+              "name": plugin_name,
+              "version": version,
+              "download_url": download_url,
+              "homepage": repo_url,
+              "requires": "7.0",
+              "tested": "7.0",
+              "requires_php": "8.3",
+              "last_updated": last_updated,
+              "sections": {
+                  "description": "Protects BlogLogistics managed-site access and site management tools.",
+                  "changelog": changelog_html,
+              },
           }
-          EOF
 
-          cat "${PLUGIN_SLUG}.json"
+          output_path = Path(f"{plugin_slug}.json")
+          output_path.write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          print(output_path.read_text(encoding="utf-8"))
+          PY
 
       - name: Upload update manifest by FTPS
         if: github.event_name == 'release'
