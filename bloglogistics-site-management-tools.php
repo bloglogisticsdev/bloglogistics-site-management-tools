@@ -3,14 +3,14 @@
  * Plugin Name:       BlogLogistics Site Management Tools
  * Plugin URI:        https://github.com/bloglogisticsdev/bloglogistics-site-management-tools
  * Description:       Protects BlogLogistics managed-site access, including the BlogLogistics admin account and MainWP Child connector.
- * Version:           1.0.4
+ * Version:           1.1.0
  * Requires at least: 7.0
  * Requires PHP:      8.3
  * Author:            BlogLogistics
  * Author URI:        https://www.bloglogistics.com/
  * License:           GPL-3.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-3.0.html
- * Update URI:        https://github.com/bloglogisticsdev/bloglogistics-site-management-tools
+ * Update URI:        https://updates.bloglogistics.com/plugins/bloglogistics-site-management-tools.json
  * Text Domain:       bloglogistics-site-management-tools
  */
 
@@ -18,12 +18,12 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'BLOGLOGISTICS_SMT_VERSION', '1.0.4' );
+define( 'BLOGLOGISTICS_SMT_VERSION', '1.1.0' );
 define( 'BLOGLOGISTICS_SMT_SLUG', 'bloglogistics-site-management-tools' );
 define( 'BLOGLOGISTICS_SMT_FILE', __FILE__ );
 define( 'BLOGLOGISTICS_SMT_DIR', plugin_dir_path( __FILE__ ) );
-define( 'BLOGLOGISTICS_SMT_REPO_URL', 'https://github.com/bloglogisticsdev/bloglogistics-site-management-tools/' );
 define( 'BLOGLOGISTICS_SMT_UPDATE_MANIFEST_URL', 'https://updates.bloglogistics.com/plugins/bloglogistics-site-management-tools.json' );
+define( 'BLOGLOGISTICS_SMT_PLUGIN_INDEX_URL', 'https://updates.bloglogistics.com/plugins/bloglogistics-plugin-index.json' );
 
 $bloglogistics_smt_puc = BLOGLOGISTICS_SMT_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
 
@@ -73,6 +73,8 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools', false ) ) {
             add_filter( 'pre_update_option_active_plugins', [ __CLASS__, 'prevent_protected_plugin_deactivation' ], 10, 2 );
             add_action( 'admin_menu', [ __CLASS__, 'hide_mainwp_child_menus' ], 999 );
             add_action( 'network_admin_menu', [ __CLASS__, 'hide_mainwp_child_menus' ], 999 );
+
+            add_filter( 'site_transient_update_plugins', [ __CLASS__, 'add_inactive_bloglogistics_plugin_updates' ] );
         }
 
         /**
@@ -347,6 +349,233 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools', false ) ) {
             }
 
             return array_values( array_unique( $new_value ) );
+        }
+
+
+
+        /**
+         * Add update offers for inactive official BlogLogistics plugins.
+         *
+         * Inactive plugins cannot run their own updater code. This method uses a single
+         * approved plugin index from updates.bloglogistics.com and checks only installed,
+         * inactive plugins listed there. It does not guess manifest URLs and it does not
+         * scan one-off BlogLogistics plugins.
+         *
+         * @param object|false $transient WordPress plugin update transient.
+         * @return object|false
+         */
+        public static function add_inactive_bloglogistics_plugin_updates( $transient ) {
+            if ( ! is_object( $transient ) ) {
+                return $transient;
+            }
+
+            if ( ! function_exists( 'get_plugins' ) ) {
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            }
+
+            if ( ! function_exists( 'is_plugin_active' ) ) {
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            }
+
+            $installed_plugins = get_plugins();
+            if ( empty( $installed_plugins ) || ! is_array( $installed_plugins ) ) {
+                return $transient;
+            }
+
+            $plugin_index = self::get_bloglogistics_plugin_index();
+            if ( empty( $plugin_index ) ) {
+                return $transient;
+            }
+
+            foreach ( $installed_plugins as $plugin_file => $plugin_data ) {
+                if ( is_plugin_active( $plugin_file ) ) {
+                    continue;
+                }
+
+                $folder_slug = self::get_plugin_folder_slug( $plugin_file );
+                if ( '' === $folder_slug || empty( $plugin_index[ $folder_slug ] ) ) {
+                    continue;
+                }
+
+                $manifest = self::get_bloglogistics_plugin_manifest( $plugin_index[ $folder_slug ] );
+                if ( empty( $manifest['version'] ) || empty( $manifest['download_url'] ) ) {
+                    continue;
+                }
+
+                $installed_version = isset( $plugin_data['Version'] ) ? (string) $plugin_data['Version'] : '';
+                if ( '' === $installed_version || ! version_compare( (string) $manifest['version'], $installed_version, '>' ) ) {
+                    continue;
+                }
+
+                if ( ! self::is_allowed_bloglogistics_download_url( (string) $manifest['download_url'] ) ) {
+                    continue;
+                }
+
+                if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) {
+                    $transient->response = [];
+                }
+
+                $transient->response[ $plugin_file ] = (object) [
+                    'id'           => $plugin_file,
+                    'slug'         => $folder_slug,
+                    'plugin'       => $plugin_file,
+                    'new_version'  => (string) $manifest['version'],
+                    'url'          => isset( $manifest['homepage'] ) ? (string) $manifest['homepage'] : '',
+                    'package'      => (string) $manifest['download_url'],
+                    'icons'        => [],
+                    'banners'      => [],
+                    'banners_rtl'  => [],
+                    'requires'     => isset( $manifest['requires'] ) ? (string) $manifest['requires'] : '',
+                    'tested'       => isset( $manifest['tested'] ) ? (string) $manifest['tested'] : '',
+                    'requires_php' => isset( $manifest['requires_php'] ) ? (string) $manifest['requires_php'] : '',
+                    'sections'     => isset( $manifest['sections'] ) && is_array( $manifest['sections'] ) ? $manifest['sections'] : [],
+                ];
+            }
+
+            return $transient;
+        }
+
+        /**
+         * Get the installed plugin folder slug.
+         *
+         * @param string $plugin_file Plugin file path relative to the plugins directory.
+         * @return string
+         */
+        private static function get_plugin_folder_slug( string $plugin_file ): string {
+            if ( false === strpos( $plugin_file, '/' ) ) {
+                return preg_replace( '/\.php$/', '', $plugin_file );
+            }
+
+            return dirname( $plugin_file );
+        }
+
+        /**
+         * Fetch and cache the approved BlogLogistics plugin index.
+         *
+         * @return array<string, string> Map of plugin folder slugs to manifest URLs.
+         */
+        private static function get_bloglogistics_plugin_index(): array {
+            $cached = get_site_transient( 'bloglogistics_smt_plugin_index' );
+            if ( is_array( $cached ) ) {
+                return $cached;
+            }
+
+            $response = wp_remote_get(
+                BLOGLOGISTICS_SMT_PLUGIN_INDEX_URL,
+                [
+                    'timeout'     => 8,
+                    'redirection' => 2,
+                ]
+            );
+
+            if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+                set_site_transient( 'bloglogistics_smt_plugin_index', [], HOUR_IN_SECONDS );
+                return [];
+            }
+
+            $body = wp_remote_retrieve_body( $response );
+            $data = json_decode( $body, true );
+            if ( ! is_array( $data ) || empty( $data['plugins'] ) || ! is_array( $data['plugins'] ) ) {
+                set_site_transient( 'bloglogistics_smt_plugin_index', [], HOUR_IN_SECONDS );
+                return [];
+            }
+
+            $index = [];
+            foreach ( $data['plugins'] as $plugin ) {
+                if ( empty( $plugin['slug'] ) || empty( $plugin['manifest_url'] ) ) {
+                    continue;
+                }
+
+                $slug         = sanitize_text_field( (string) $plugin['slug'] );
+                $manifest_url = esc_url_raw( (string) $plugin['manifest_url'] );
+
+                if ( '' === $slug || ! self::is_allowed_manifest_url( $manifest_url ) ) {
+                    continue;
+                }
+
+                $index[ $slug ] = $manifest_url;
+            }
+
+            set_site_transient( 'bloglogistics_smt_plugin_index', $index, 6 * HOUR_IN_SECONDS );
+
+            return $index;
+        }
+
+        /**
+         * Fetch and cache a single plugin manifest.
+         *
+         * @param string $manifest_url Manifest URL.
+         * @return array<string, mixed>
+         */
+        private static function get_bloglogistics_plugin_manifest( string $manifest_url ): array {
+            if ( ! self::is_allowed_manifest_url( $manifest_url ) ) {
+                return [];
+            }
+
+            $cache_key = 'bloglogistics_smt_manifest_' . md5( $manifest_url );
+            $cached    = get_site_transient( $cache_key );
+            if ( is_array( $cached ) ) {
+                return $cached;
+            }
+
+            $response = wp_remote_get(
+                $manifest_url,
+                [
+                    'timeout'     => 8,
+                    'redirection' => 2,
+                ]
+            );
+
+            if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+                set_site_transient( $cache_key, [], HOUR_IN_SECONDS );
+                return [];
+            }
+
+            $body     = wp_remote_retrieve_body( $response );
+            $manifest = json_decode( $body, true );
+            if ( ! is_array( $manifest ) ) {
+                set_site_transient( $cache_key, [], HOUR_IN_SECONDS );
+                return [];
+            }
+
+            set_site_transient( $cache_key, $manifest, 6 * HOUR_IN_SECONDS );
+
+            return $manifest;
+        }
+
+        /**
+         * Validate manifest URLs so this plugin never probes random endpoints.
+         *
+         * @param string $url Manifest URL.
+         * @return bool
+         */
+        private static function is_allowed_manifest_url( string $url ): bool {
+            $parts = wp_parse_url( $url );
+
+            return is_array( $parts )
+                && 'https' === ( $parts['scheme'] ?? '' )
+                && 'updates.bloglogistics.com' === ( $parts['host'] ?? '' )
+                && isset( $parts['path'] )
+                && 0 === strpos( $parts['path'], '/plugins/' )
+                && '.json' === substr( $parts['path'], -5 );
+        }
+
+        /**
+         * Validate package URLs before placing them in WordPress update data.
+         *
+         * @param string $url Download URL.
+         * @return bool
+         */
+        private static function is_allowed_bloglogistics_download_url( string $url ): bool {
+            $parts = wp_parse_url( $url );
+
+            return is_array( $parts )
+                && 'https' === ( $parts['scheme'] ?? '' )
+                && 'github.com' === ( $parts['host'] ?? '' )
+                && isset( $parts['path'] )
+                && 0 === strpos( $parts['path'], '/bloglogisticsdev/' )
+                && false !== strpos( $parts['path'], '/releases/download/' )
+                && '.zip' === substr( $parts['path'], -4 );
         }
 
         /**

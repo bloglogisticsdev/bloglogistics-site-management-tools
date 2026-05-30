@@ -1,6 +1,6 @@
 <?php
 /**
- * GitHub updater for BlogLogistics Site Management Tools.
+ * Manifest updater for BlogLogistics Site Management Tools.
  *
  * @package BlogLogistics_Site_Management_Tools
  */
@@ -16,7 +16,7 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools_Updater', false ) ) {
     final class BlogLogistics_Site_Management_Tools_Updater {
 
         /**
-         * Initialise GitHub-based plugin updates.
+         * Initialise manifest-based plugin updates.
          *
          * @param array<string, string> $args Updater arguments.
          */
@@ -33,12 +33,11 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools_Updater', false ) ) {
                 return;
             }
 
-            $update_checker = PucFactory::buildUpdateChecker(
+            PucFactory::buildUpdateChecker(
                 $args['repo_url'],
                 $args['plugin_file'],
                 $args['slug']
             );
-
         }
     }
 }

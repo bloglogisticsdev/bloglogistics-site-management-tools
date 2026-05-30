@@ -4,17 +4,19 @@ Tags: site management, managed sites, mainwp, admin tools, access protection
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.3
-Stable tag: 1.0.4
+Stable tag: 1.1.0
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Protects BlogLogistics managed-site access, including the BlogLogistics admin account and MainWP Child connector.
+Protects BlogLogistics managed-site access, including the BlogLogistics admin account, MainWP Child connector, and inactive BlogLogistics plugin update visibility.
 
 == Description ==
 
 BlogLogistics Site Management Tools protects the core access components used to manage BlogLogistics client sites.
 
 The plugin protects the BlogLogistics administrator account and the MainWP Child connector from normal WordPress admin screens where another administrator could accidentally remove, deactivate, or alter managed-site access.
+
+It also provides a safe update bridge for inactive official BlogLogistics plugins. Inactive plugins cannot run their own updater code, so this plugin checks a single approved BlogLogistics plugin index and adds update offers only for installed inactive plugins listed there.
 
 This plugin is intended for BlogLogistics-managed WordPress sites where the BlogLogistics account and MainWP Child connector are part of the site management setup.
 
@@ -28,8 +30,11 @@ This plugin is intended for BlogLogistics-managed WordPress sites where the Blog
 * Reduces accidental bulk deactivation or deletion risk from plugin screens.
 * Hides MainWP Child menu entries from users other than the BlogLogistics account.
 * Hides this guard plugin from normal plugin lists for users other than the BlogLogistics account.
-* Uses a plugin-specific GitHub updater wrapper to avoid conflicts with other BlogLogistics plugins.
-* Uses GitHub release-based updates with automated WordPress ZIP builds.
+* Uses the BlogLogistics update manifest endpoint for its own updates.
+* Checks a single approved BlogLogistics plugin index for inactive plugin update support.
+* Adds update offers for installed inactive official BlogLogistics plugins only when they are listed in the approved index.
+* Does not guess manifest URLs and does not probe one-off BlogLogistics plugins.
+* Uses GitHub release assets for plugin ZIP downloads.
 
 == Installation ==
 
@@ -46,6 +51,8 @@ When logged in as the BlogLogistics management account, protected tools remain v
 
 When logged in as another administrator, protected management infrastructure is hidden from normal WordPress admin screens where practical.
 
+Inactive official BlogLogistics plugins that are listed in the approved BlogLogistics plugin index can still show update offers in WordPress even though those inactive plugins cannot run their own updater code.
+
 == Frequently Asked Questions ==
 
 = Does this remove the BlogLogistics admin account? =
@@ -56,6 +63,10 @@ No. The plugin protects the BlogLogistics admin account. It does not remove it.
 
 No. This version does not recreate accounts. It focuses on preventing accidental deletion or role changes from normal WordPress admin workflows.
 
+= Does this hide MainWP Child from every possible place? =
+
+No plugin can hide another plugin from filesystem access, database access, hosting control panels, backups, security scanners, or WP-CLI. This plugin hides and protects MainWP Child from normal WordPress admin screens where practical.
+
 = Why is MainWP Child protected? =
 
 MainWP Child is part of the BlogLogistics managed-site connection. Accidentally deactivating or deleting it can break remote site management.
@@ -64,7 +75,22 @@ MainWP Child is part of the BlogLogistics managed-site connection. Accidentally 
 
 The BlogLogistics management account can still see and manage protected tools.
 
+= Does this scan every plugin with BlogLogistics in the name? =
+
+No. It checks only installed inactive plugins that are listed in the approved BlogLogistics plugin index at updates.bloglogistics.com. It does not guess manifest URLs and it ignores one-off BlogLogistics plugins that are not listed in the index.
+
+= Does this force active BlogLogistics plugins to update faster? =
+
+No. Active plugins continue to use their own updater code and normal WordPress update behaviour.
+
 == Changelog ==
+
+= 1.1.0 =
+* Add update support for installed inactive official BlogLogistics plugins using an approved plugin index.
+* Check only the plugin manifest URLs listed in the BlogLogistics plugin index.
+* Ignore one-off BlogLogistics plugins that are not listed in the index.
+* Avoid guessed manifest URLs and avoid needless 404 requests.
+* Keep active BlogLogistics plugins on their own updater logic.
 
 = 1.0.4 =
 * Generate the update manifest changelog from readme.txt so WordPress displays the full changelog.
@@ -91,8 +117,8 @@ The BlogLogistics management account can still see and manage protected tools.
 
 == Upgrade Notice ==
 
-= 1.0.0 =
-Renamed and standardized as BlogLogistics Site Management Tools. This is a new plugin slug and should be installed carefully alongside or in place of the previous BlogLogistics Maintenance Access plugin.
+= 1.1.0 =
+Adds update visibility for installed inactive official BlogLogistics plugins that are listed in the approved BlogLogistics plugin index.
 
 == License ==
 
