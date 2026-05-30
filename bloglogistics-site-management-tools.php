@@ -3,7 +3,7 @@
  * Plugin Name:       BlogLogistics Site Management Tools
  * Plugin URI:        https://github.com/bloglogisticsdev/bloglogistics-site-management-tools
  * Description:       Protects BlogLogistics managed-site access, including the BlogLogistics admin account and MainWP Child connector.
- * Version:           1.1.1
+ * Version:           1.1.2
  * Requires at least: 7.0
  * Requires PHP:      8.3
  * Author:            BlogLogistics
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'BLOGLOGISTICS_SMT_VERSION', '1.1.1' );
+define( 'BLOGLOGISTICS_SMT_VERSION', '1.1.2' );
 define( 'BLOGLOGISTICS_SMT_SLUG', 'bloglogistics-site-management-tools' );
 define( 'BLOGLOGISTICS_SMT_FILE', __FILE__ );
 define( 'BLOGLOGISTICS_SMT_DIR', plugin_dir_path( __FILE__ ) );
@@ -423,7 +423,7 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools', false ) ) {
                     'new_version'  => (string) $manifest['version'],
                     'url'          => isset( $manifest['homepage'] ) ? (string) $manifest['homepage'] : '',
                     'package'      => (string) $manifest['download_url'],
-                    'icons'        => [],
+                    'icons'        => self::get_manifest_icons( $manifest ),
                     'banners'      => [],
                     'banners_rtl'  => [],
                     'requires'     => isset( $manifest['requires'] ) ? (string) $manifest['requires'] : '',
@@ -518,10 +518,64 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools', false ) ) {
                 'requires_php'  => isset( $manifest['requires_php'] ) ? (string) $manifest['requires_php'] : '',
                 'last_updated'  => isset( $manifest['last_updated'] ) ? (string) $manifest['last_updated'] : '',
                 'sections'      => $sections,
+                'icons'         => self::get_manifest_icons( $manifest ),
                 'download_link' => (string) $manifest['download_url'],
                 'package'       => (string) $manifest['download_url'],
                 'external'      => true,
             ];
+        }
+
+        /**
+         * Get valid icon URLs from a BlogLogistics plugin manifest.
+         *
+         * @param array<string, mixed> $manifest Plugin manifest.
+         * @return array<string, string>
+         */
+        private static function get_manifest_icons( array $manifest ): array {
+            if ( empty( $manifest['icons'] ) || ! is_array( $manifest['icons'] ) ) {
+                return [];
+            }
+
+            $icons = [];
+            foreach ( [ '1x', '2x', 'default' ] as $size ) {
+                if ( empty( $manifest['icons'][ $size ] ) || ! is_string( $manifest['icons'][ $size ] ) ) {
+                    continue;
+                }
+
+                $url = esc_url_raw( $manifest['icons'][ $size ] );
+                if ( self::is_allowed_bloglogistics_asset_url( $url ) ) {
+                    $icons[ $size ] = $url;
+                }
+            }
+
+            return $icons;
+        }
+
+        /**
+         * Determine whether a manifest asset URL is allowed.
+         *
+         * @param string $url Asset URL.
+         * @return bool
+         */
+        private static function is_allowed_bloglogistics_asset_url( string $url ): bool {
+            if ( '' === $url ) {
+                return false;
+            }
+
+            $parts = wp_parse_url( $url );
+            if ( empty( $parts['scheme'] ) || empty( $parts['host'] ) || empty( $parts['path'] ) ) {
+                return false;
+            }
+
+            if ( 'https' !== strtolower( (string) $parts['scheme'] ) ) {
+                return false;
+            }
+
+            if ( 'updates.bloglogistics.com' !== strtolower( (string) $parts['host'] ) ) {
+                return false;
+            }
+
+            return 0 === strpos( (string) $parts['path'], '/plugins/assets/' );
         }
 
         /**

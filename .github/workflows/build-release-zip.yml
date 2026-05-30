@@ -68,6 +68,8 @@ jobs:
           tag_name = "${{ github.event.release.tag_name }}"
           version = tag_name.lstrip("v")
           download_url = f"{repo_url}/releases/download/v{version}/{plugin_slug}.zip"
+          icon_1x_url = "https://updates.bloglogistics.com/plugins/assets/icon-128x128.png"
+          icon_2x_url = "https://updates.bloglogistics.com/plugins/assets/icon-256x256.png"
           last_updated = datetime.datetime.utcnow().strftime("%Y-%m-%d")
 
           readme_path = Path("readme.txt")
@@ -119,6 +121,11 @@ jobs:
               "version": version,
               "download_url": download_url,
               "homepage": repo_url,
+              "icons": {
+                  "1x": icon_1x_url,
+                  "2x": icon_2x_url,
+                  "default": icon_2x_url,
+              },
               "requires": "7.0",
               "tested": "7.0",
               "requires_php": "8.3",
