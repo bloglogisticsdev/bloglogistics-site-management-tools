@@ -3,7 +3,7 @@
  * Plugin Name:       BlogLogistics Site Management Tools
  * Plugin URI:        https://github.com/bloglogisticsdev/bloglogistics-site-management-tools
  * Description:       Protects BlogLogistics managed-site access, including the BlogLogistics admin account and MainWP Child connector.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Requires at least: 7.0
  * Requires PHP:      8.3
  * Author:            BlogLogistics
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'BLOGLOGISTICS_SMT_VERSION', '1.1.0' );
+define( 'BLOGLOGISTICS_SMT_VERSION', '1.1.1' );
 define( 'BLOGLOGISTICS_SMT_SLUG', 'bloglogistics-site-management-tools' );
 define( 'BLOGLOGISTICS_SMT_FILE', __FILE__ );
 define( 'BLOGLOGISTICS_SMT_DIR', plugin_dir_path( __FILE__ ) );
@@ -75,6 +75,7 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools', false ) ) {
             add_action( 'network_admin_menu', [ __CLASS__, 'hide_mainwp_child_menus' ], 999 );
 
             add_filter( 'site_transient_update_plugins', [ __CLASS__, 'add_inactive_bloglogistics_plugin_updates' ] );
+            add_filter( 'plugins_api', [ __CLASS__, 'provide_inactive_bloglogistics_plugin_information' ], 10, 3 );
         }
 
         /**
@@ -433,6 +434,94 @@ if ( ! class_exists( 'BlogLogistics_Site_Management_Tools', false ) ) {
             }
 
             return $transient;
+        }
+
+
+
+        /**
+         * Provide plugin information modal details for inactive official BlogLogistics plugins.
+         *
+         * WordPress asks the plugins_api filter for details when an administrator clicks
+         * the "View version details" link. Inactive plugins cannot provide their own
+         * Plugin Update Checker response, so Site Management Tools provides the response
+         * for installed inactive BlogLogistics plugins listed in the approved index.
+         *
+         * @param false|object|array $result Existing API result.
+         * @param string             $action API action.
+         * @param object             $args   API arguments.
+         * @return false|object|array
+         */
+        public static function provide_inactive_bloglogistics_plugin_information( $result, string $action, $args ) {
+            if ( 'plugin_information' !== $action || ! is_object( $args ) || empty( $args->slug ) ) {
+                return $result;
+            }
+
+            if ( ! function_exists( 'get_plugins' ) || ! function_exists( 'is_plugin_active' ) ) {
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            }
+
+            $requested_slug    = sanitize_text_field( (string) $args->slug );
+            $installed_plugins = get_plugins();
+            if ( empty( $installed_plugins ) || ! is_array( $installed_plugins ) ) {
+                return $result;
+            }
+
+            $plugin_index = self::get_bloglogistics_plugin_index();
+            if ( empty( $plugin_index[ $requested_slug ] ) ) {
+                return $result;
+            }
+
+            $matching_plugin_file = '';
+            $matching_plugin_data = [];
+            foreach ( $installed_plugins as $plugin_file => $plugin_data ) {
+                if ( is_plugin_active( $plugin_file ) ) {
+                    continue;
+                }
+
+                if ( $requested_slug === self::get_plugin_folder_slug( $plugin_file ) ) {
+                    $matching_plugin_file = $plugin_file;
+                    $matching_plugin_data = is_array( $plugin_data ) ? $plugin_data : [];
+                    break;
+                }
+            }
+
+            if ( '' === $matching_plugin_file ) {
+                return $result;
+            }
+
+            $manifest = self::get_bloglogistics_plugin_manifest( $plugin_index[ $requested_slug ] );
+            if ( empty( $manifest['version'] ) || empty( $manifest['download_url'] ) ) {
+                return $result;
+            }
+
+            if ( ! self::is_allowed_bloglogistics_download_url( (string) $manifest['download_url'] ) ) {
+                return $result;
+            }
+
+            $sections = isset( $manifest['sections'] ) && is_array( $manifest['sections'] ) ? $manifest['sections'] : [];
+            if ( empty( $sections['description'] ) && ! empty( $matching_plugin_data['Description'] ) ) {
+                $sections['description'] = (string) $matching_plugin_data['Description'];
+            }
+            if ( empty( $sections['changelog'] ) ) {
+                $sections['changelog'] = '<p>' . esc_html__( 'No changelog is available for this release.', 'bloglogistics-site-management-tools' ) . '</p>';
+            }
+
+            return (object) [
+                'name'          => isset( $manifest['name'] ) ? (string) $manifest['name'] : ( $matching_plugin_data['Name'] ?? $requested_slug ),
+                'slug'          => $requested_slug,
+                'version'       => (string) $manifest['version'],
+                'author'        => isset( $matching_plugin_data['Author'] ) ? (string) $matching_plugin_data['Author'] : 'BlogLogistics',
+                'author_profile'=> isset( $matching_plugin_data['AuthorURI'] ) ? (string) $matching_plugin_data['AuthorURI'] : 'https://www.bloglogistics.com/',
+                'homepage'      => isset( $manifest['homepage'] ) ? (string) $manifest['homepage'] : '',
+                'requires'      => isset( $manifest['requires'] ) ? (string) $manifest['requires'] : '',
+                'tested'        => isset( $manifest['tested'] ) ? (string) $manifest['tested'] : '',
+                'requires_php'  => isset( $manifest['requires_php'] ) ? (string) $manifest['requires_php'] : '',
+                'last_updated'  => isset( $manifest['last_updated'] ) ? (string) $manifest['last_updated'] : '',
+                'sections'      => $sections,
+                'download_link' => (string) $manifest['download_url'],
+                'package'       => (string) $manifest['download_url'],
+                'external'      => true,
+            ];
         }
 
         /**

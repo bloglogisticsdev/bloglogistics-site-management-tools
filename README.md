@@ -4,7 +4,7 @@ Tags: site management, managed sites, mainwp, admin tools, access protection
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.3
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -85,6 +85,10 @@ No. Active plugins continue to use their own updater code and normal WordPress u
 
 == Changelog ==
 
+= 1.1.1 =
+* Fix the version details modal for inactive official BlogLogistics plugin updates.
+* Show the plugin details and changelog tabs instead of a Plugin not found message.
+
 = 1.1.0 =
 * Add update support for installed inactive official BlogLogistics plugins using an approved plugin index.
 * Check only the plugin manifest URLs listed in the BlogLogistics plugin index.
@@ -116,6 +120,9 @@ No. Active plugins continue to use their own updater code and normal WordPress u
 * Protect MainWP Child from accidental deactivation or deletion through normal WordPress admin screens.
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Fixes the version details modal for inactive official BlogLogistics plugin updates.
 
 = 1.1.0 =
 Adds update visibility for installed inactive official BlogLogistics plugins that are listed in the approved BlogLogistics plugin index.
